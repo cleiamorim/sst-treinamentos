@@ -1,21 +1,20 @@
 import os
 from flask import Flask, request, jsonify
 import mysql.connector
-from dotenv import load_dotenv # Importa a função para carregar o .env
+from dotenv import load_dotenv
 
 # Carrega as variáveis do arquivo .env
 load_dotenv()
 
 app = Flask(__name__)
 
-# Configuração do Banco de Dados usando variáveis de ambiente
+# Configuração do Banco de Dados
 db_config = {
     'host': os.getenv('DB_HOST'),
     'database': os.getenv('DB_NAME'),
     'user': os.getenv('DB_USER'),
     'password': os.getenv('DB_PASS')
 }
-
 
 def get_db_connection(): 
     return mysql.connector.connect(**db_config)
@@ -24,12 +23,15 @@ def get_db_connection():
 # CLASSES (MODELOS)
 # =========================================================
 class Funcionario:
-    def __init__(self, nome, cpf, cargo, setor, id=None):
+    def __init__(self, nome, cpf, cargo, setor, email, telefone, whatsapp, id=None):
         self.id = id
         self.nome = nome
         self.cpf = cpf
         self.cargo = cargo
         self.setor = setor
+        self.email = email
+        self.telefone = telefone
+        self.whatsapp = whatsapp
 
 class Treinamento:
     def __init__(self, nome_treinamento, validade_meses, id=None):
@@ -46,7 +48,7 @@ class Registro:
         self.status = status
 
 # =========================================================
-# 1. ROTAS PARA FUNCIONÁRIOS
+# 1. ROTAS PARA FUNCIONÁRIOS (Atualizadas com Contatos)
 # =========================================================
 
 @app.route('/api/funcionario', methods=['POST'])
@@ -54,11 +56,12 @@ def cadastrar_funcionario():
     conn = None
     try:
         dados = request.get_json()
-        func = Funcionario(dados['nome'], dados['cpf'], dados['cargo'], dados['setor'])
+        func = Funcionario(dados['nome'], dados['cpf'], dados['cargo'], dados['setor'], 
+                           dados['email'], dados['telefone'], dados['whatsapp'])
         conn = get_db_connection()
         cursor = conn.cursor()
-        sql = "INSERT INTO DimFuncionarios (nome, cpf, cargo, setor) VALUES (%s, %s, %s, %s)"
-        cursor.execute(sql, (func.nome, func.cpf, func.cargo, func.setor))
+        sql = "INSERT INTO DimFuncionarios (nome, cpf, cargo, setor, email, telefone, whatsapp) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        cursor.execute(sql, (func.nome, func.cpf, func.cargo, func.setor, func.email, func.telefone, func.whatsapp))
         conn.commit()
         return jsonify({"mensagem": "Funcionário cadastrado!"}), 201
     except Exception as e:
@@ -74,11 +77,14 @@ def atualizar_funcionario(id):
     conn = None
     try:
         dados = request.get_json()
-        func = Funcionario(dados['nome'], dados['cpf'], dados['cargo'], dados['setor'])
+        func = Funcionario(dados['nome'], dados['cpf'], dados['cargo'], dados['setor'], 
+                           dados['email'], dados['telefone'], dados['whatsapp'])
         conn = get_db_connection()
         cursor = conn.cursor()
-        sql = "UPDATE DimFuncionarios SET nome = %s, cpf = %s, cargo = %s, setor = %s WHERE id_funcionario = %s"
-        cursor.execute(sql, (func.nome, func.cpf, func.cargo, func.setor, id))
+        sql = """UPDATE DimFuncionarios 
+                 SET nome = %s, cpf = %s, cargo = %s, setor = %s, email = %s, telefone = %s, whatsapp = %s 
+                 WHERE id_funcionario = %s"""
+        cursor.execute(sql, (func.nome, func.cpf, func.cargo, func.setor, func.email, func.telefone, func.whatsapp, id))
         conn.commit()
         if cursor.rowcount == 0: return jsonify({"mensagem": "Funcionário não encontrado."}), 404
         return jsonify({"mensagem": "Funcionário atualizado!"}), 200
@@ -113,7 +119,6 @@ def buscar_funcionarios():
     conn = None
     try:
         nome = request.args.get('nome')
-        cargo = request.args.get('cargo')
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         sql = "SELECT * FROM DimFuncionarios WHERE 1=1"
@@ -121,9 +126,6 @@ def buscar_funcionarios():
         if nome:
             sql += " AND nome LIKE %s"
             params.append(f"%{nome}%")
-        if cargo:
-            sql += " AND cargo = %s"
-            params.append(cargo)
         cursor.execute(sql, tuple(params))
         funcionarios = cursor.fetchall()
         return jsonify(funcionarios), 200
@@ -212,28 +214,6 @@ def excluir_treinamento(id):
             cursor.close()
             conn.close()
 
-@app.route('/api/treinamento/buscar', methods=['GET'])
-def buscar_treinamentos():
-    conn = None
-    try:
-        nome = request.args.get('nome_treinamento')
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        sql = "SELECT * FROM DimTreinamentos WHERE 1=1"
-        params = []
-        if nome:
-            sql += " AND nome_treinamento LIKE %s"
-            params.append(f"%{nome}%")
-        cursor.execute(sql, tuple(params))
-        treinamentos = cursor.fetchall()
-        return jsonify(treinamentos), 200
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
 # =========================================================
 # 3. ROTAS PARA REGISTROS (FATO)
 # =========================================================
@@ -244,14 +224,35 @@ def registrar_treinamento():
     try:
         dados = request.get_json()
         conn = get_db_connection()
-        cursor = conn.cursor()
-        sql = "INSERT INTO FactRegistros (id_funcionario, id_treinamento, data_realizacao) VALUES (%s, %s, %s)"
-        cursor.execute(sql, (dados['id_funcionario'], dados['id_treinamento'], dados['data_realizacao']))
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("SELECT validade_meses FROM DimTreinamentos WHERE id_treinamento = %s", (dados['id_treinamento'],))
+        treino = cursor.fetchone()
+        
+        if not treino:
+            return jsonify({"erro": "Treinamento não encontrado"}), 404
+        
+        validade = treino['validade_meses']
+        
+        sql = """
+            INSERT INTO FactRegistros 
+            (id_funcionario, id_treinamento, data_realizacao, data_vencimento) 
+            VALUES (%s, %s, %s, DATE_ADD(%s, INTERVAL %s MONTH))
+        """
+        
+        cursor.execute(sql, (
+            dados['id_funcionario'], 
+            dados['id_treinamento'], 
+            dados['data_realizacao'], 
+            dados['data_realizacao'], 
+            validade
+        ))
+        
         conn.commit()
-        return jsonify({"mensagem": "Registro criado!"}), 201
+        return jsonify({"mensagem": "Registro criado com data de vencimento calculada!"}), 201
     except Exception as e:
         if conn: conn.rollback()
-        return jsonify({"erro": str(e)}), 500
+        return jsonify({"erro": f"Erro ao processar registro: {str(e)}"}), 500
     finally:
         if conn and conn.is_connected():
             cursor.close()
@@ -264,7 +265,7 @@ def listar_registros():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         sql = """
-            SELECT R.id_registro, F.nome AS funcionario, T.nome_treinamento, R.data_realizacao, R.status
+            SELECT R.id_registro, F.nome AS funcionario, T.nome_treinamento, R.data_realizacao, R.data_vencimento, R.status
             FROM FactRegistros R
             JOIN DimFuncionarios F ON R.id_funcionario = F.id_funcionario
             JOIN DimTreinamentos T ON R.id_treinamento = T.id_treinamento
@@ -273,44 +274,6 @@ def listar_registros():
         registros = cursor.fetchall()
         return jsonify(registros), 200
     except Exception as e:
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-@app.route('/api/registros/<int:id>', methods=['PUT'])
-def atualizar_registro(id):
-    conn = None
-    try:
-        dados = request.get_json()
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        sql = "UPDATE FactRegistros SET id_funcionario = %s, id_treinamento = %s, data_realizacao = %s, status = %s WHERE id_registro = %s"
-        cursor.execute(sql, (dados['id_funcionario'], dados['id_treinamento'], dados['data_realizacao'], dados['status'], id))
-        conn.commit()
-        if cursor.rowcount == 0: return jsonify({"mensagem": "Registro não encontrado."}), 404
-        return jsonify({"mensagem": "Registro atualizado!"}), 200
-    except Exception as e:
-        if conn: conn.rollback()
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-@app.route('/api/registros/<int:id>', methods=['DELETE'])
-def excluir_registro(id):
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM FactRegistros WHERE id_registro = %s", (id,))
-        conn.commit()
-        if cursor.rowcount == 0: return jsonify({"mensagem": "Registro não encontrado."}), 404
-        return jsonify({"mensagem": "Registro excluído!"}), 200
-    except Exception as e:
-        if conn: conn.rollback()
         return jsonify({"erro": str(e)}), 500
     finally:
         if conn and conn.is_connected():
