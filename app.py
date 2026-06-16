@@ -1,7 +1,9 @@
 import os
+import re  # Adicionado para limpar caracteres especiais do telefone
 from flask import Flask, request, jsonify
 import mysql.connector
 from dotenv import load_dotenv
+from twilio.rest import Client  # Import fixado no topo
 
 # Carrega as variáveis do arquivo .env
 load_dotenv()
@@ -18,6 +20,20 @@ db_config = {
 
 def get_db_connection(): 
     return mysql.connector.connect(**db_config)
+
+# Função Auxiliar para garantir o padrão E.164 exigido pela Twilio
+def formatar_para_twilio(telefone_raw):
+    if not telefone_raw:
+        return ""
+    # Remove espaços, parênteses e traços, mantendo apenas dígitos
+    numeros = re.sub(r'\D', '', str(telefone_raw))
+    # Se tiver 11 dígitos (DDD + 9 dígitos), assume Brasil e insere o +55
+    if len(numeros) == 11:
+        return f"+55{numeros}"
+    # Se já possuir o código do país (13 dígitos), adiciona apenas o sinal de +
+    elif len(numeros) == 13:
+        return f"+{numeros}"
+    return numeros
 
 # =========================================================
 # CLASSES (MODELOS)
@@ -274,6 +290,74 @@ def listar_registros():
         registros = cursor.fetchall()
         return jsonify(registros), 200
     except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+    finally:
+        if conn and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+# =========================================================
+# #### API DISPAROS DE AVISO (SMS + WHATSAPP INTEGRADOS)
+# =========================================================
+
+@app.route('/api/notificar-vencimentos', methods=['POST'])
+def notificar_vencimentos():
+    conn = None
+    try:
+        # Carrega as credenciais seguras do arquivo .env
+        account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+        auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+        from_number = os.getenv('TWILIO_PHONE_NUMBER')
+        
+        client = Client(account_sid, auth_token)
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Query para buscar registros que vencem nos próximos 30 dias
+        sql = """
+            SELECT R.*, F.nome, F.telefone, T.nome_treinamento 
+            FROM FactRegistros R
+            JOIN DimFuncionarios F ON R.id_funcionario = F.id_funcionario
+            JOIN DimTreinamentos T ON R.id_treinamento = T.id_treinamento
+            WHERE R.data_vencimento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+        """
+        cursor.execute(sql)
+        vencendo = cursor.fetchall()
+        
+        contador_sucesso = 0
+        for reg in vencendo:
+            # Sanitiza o número do banco de dados antes do envio
+            telefone_limpo = formatar_para_twilio(reg['telefone'])
+            
+            # Validação defensiva básica para evitar strings vazias ou nulas
+            if not telefone_limpo or len(telefone_limpo) < 10:
+                print(f"Pulo: Colaborador {reg['nome']} ignorado por falta de telefone válido.")
+                continue
+            
+            # Personaliza a mensagem corporativa
+            mensagem = f"Olá {reg['nome']}, seu treinamento de {reg['nome_treinamento']} vence em breve no dia {reg['data_vencimento']}."
+            
+            # 1. Disparo de canal tradicional via SMS
+            client.messages.create(
+                body=mensagem,
+                from_=from_number,
+                to=telefone_limpo
+            )
+            
+            # 2. Disparo de canal instantâneo via WhatsApp
+        whatsapp_from = os.getenv('TWILIO_WHATSAPP_NUMBER')
+        client.messages.create(
+             body=mensagem,
+             from_=f"whatsapp:{whatsapp_from}",
+             to=f"whatsapp:{telefone_limpo}"
+           )
+            
+        return jsonify({"mensagem": f"{contador_sucesso} notificações enviadas com sucesso via SMS e WhatsApp!"}), 200
+
+    except Exception as e:
+        # Registra a exceção no console para fins de depuração
+        print(f"Erro ao notificar: {str(e)}")
         return jsonify({"erro": str(e)}), 500
     finally:
         if conn and conn.is_connected():
