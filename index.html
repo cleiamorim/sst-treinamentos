@@ -1,368 +1,249 @@
-import os
-import re  # Adicionado para limpar caracteres especiais do telefone
-from flask import Flask, request, jsonify
-import mysql.connector
-from dotenv import load_dotenv
-from twilio.rest import Client  # Import fixado no topo
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLAM SST 4.0 - Painel de Controle Semântico</title>
 
-# Carrega as variáveis do arquivo .env
-load_dotenv()
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light text-dark">
+    <header class="bg-dark text-white py-3 mb-4 shadow-sm">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h4 m-0 text-success fw-bold"><i class="bi bi-shield-fill-check"></i> CLAM SST 4.0</h1>
+                <p class="small m-0 text-secondary">Sistema de Gestão e Conformidade de Segurança do Trabalho</p>
+            </div>
+            <button class="btn btn-sm btn-danger fw-bold" id="btnTwilio" onclick="dispararTwilio()">
+                <i class="bi bi-whatsapp"></i> Notificar Vencimentos
+            </button>
+        </div>
+    </header>
 
-app = Flask(__name__)
-
-# Configuração do Banco de Dados
-db_config = {
-    'host': os.getenv('DB_HOST'),
-    'database': os.getenv('DB_NAME'),
-    'user': os.getenv('DB_USER'),
-    'password': os.getenv('DB_PASS')
-}
-
-def get_db_connection(): 
-    return mysql.connector.connect(**db_config)
-
-# Função Auxiliar para garantir o padrão E.164 exigido pela Twilio
-def formatar_para_twilio(telefone_raw):
-    if not telefone_raw:
-        return ""
-    # Remove espaços, parênteses e traços, mantendo apenas dígitos
-    numeros = re.sub(r'\D', '', str(telefone_raw))
-    # Se tiver 11 dígitos (DDD + 9 dígitos), assume Brasil e insere o +55
-    if len(numeros) == 11:
-        return f"+55{numeros}"
-    # Se já possuir o código do país (13 dígitos), adiciona apenas o sinal de +
-    elif len(numeros) == 13:
-        return f"+{numeros}"
-    return numeros
-
-# =========================================================
-# CLASSES (MODELOS)
-# =========================================================
-class Funcionario:
-    def __init__(self, nome, cpf, cargo, setor, email, telefone, whatsapp, id=None):
-        self.id = id
-        self.nome = nome
-        self.cpf = cpf
-        self.cargo = cargo
-        self.setor = setor
-        self.email = email
-        self.telefone = telefone
-        self.whatsapp = whatsapp
-
-class Treinamento:
-    def __init__(self, nome_treinamento, validade_meses, id=None):
-        self.id = id
-        self.nome_treinamento = nome_treinamento
-        self.validade_meses = validade_meses
-
-class Registro:
-    def __init__(self, id_funcionario, id_treinamento, data_realizacao, status='Ativo', id=None):
-        self.id = id
-        self.id_funcionario = id_funcionario
-        self.id_treinamento = id_treinamento
-        self.data_realizacao = data_realizacao
-        self.status = status
-
-# =========================================================
-# 1. ROTAS PARA FUNCIONÁRIOS (Atualizadas com Contatos)
-# =========================================================
-
-@app.route('/api/funcionario', methods=['POST'])
-def cadastrar_funcionario():
-    conn = None
-    try:
-        dados = request.get_json()
-        func = Funcionario(dados['nome'], dados['cpf'], dados['cargo'], dados['setor'], 
-                           dados['email'], dados['telefone'], dados['whatsapp'])
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        sql = "INSERT INTO DimFuncionarios (nome, cpf, cargo, setor, email, telefone, whatsapp) VALUES (%s, %s, %s, %s, %s, %s, %s)"
-        cursor.execute(sql, (func.nome, func.cpf, func.cargo, func.setor, func.email, func.telefone, func.whatsapp))
-        conn.commit()
-        return jsonify({"mensagem": "Funcionário cadastrado!"}), 201
-    except Exception as e:
-        if conn: conn.rollback()
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-@app.route('/api/funcionario/<int:id>', methods=['PUT'])
-def atualizar_funcionario(id):
-    conn = None
-    try:
-        dados = request.get_json()
-        func = Funcionario(dados['nome'], dados['cpf'], dados['cargo'], dados['setor'], 
-                           dados['email'], dados['telefone'], dados['whatsapp'])
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        sql = """UPDATE DimFuncionarios 
-                 SET nome = %s, cpf = %s, cargo = %s, setor = %s, email = %s, telefone = %s, whatsapp = %s 
-                 WHERE id_funcionario = %s"""
-        cursor.execute(sql, (func.nome, func.cpf, func.cargo, func.setor, func.email, func.telefone, func.whatsapp, id))
-        conn.commit()
-        if cursor.rowcount == 0: return jsonify({"mensagem": "Funcionário não encontrado."}), 404
-        return jsonify({"mensagem": "Funcionário atualizado!"}), 200
-    except Exception as e:
-        if conn: conn.rollback()
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-@app.route('/api/funcionario/<int:id>', methods=['DELETE'])
-def excluir_funcionario(id):
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM DimFuncionarios WHERE id_funcionario = %s", (id,))
-        conn.commit()
-        if cursor.rowcount == 0: return jsonify({"mensagem": "Funcionário não encontrado."}), 404
-        return jsonify({"mensagem": "Funcionário excluído!"}), 200
-    except Exception as e:
-        if conn: conn.rollback()
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-@app.route('/api/funcionario/buscar', methods=['GET'])
-def buscar_funcionarios():
-    conn = None
-    try:
-        nome = request.args.get('nome')
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        sql = "SELECT * FROM DimFuncionarios WHERE 1=1"
-        params = []
-        if nome:
-            sql += " AND nome LIKE %s"
-            params.append(f"%{nome}%")
-        cursor.execute(sql, tuple(params))
-        funcionarios = cursor.fetchall()
-        return jsonify(funcionarios), 200
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-# =========================================================
-# 2. ROTAS PARA TREINAMENTOS
-# =========================================================
-
-@app.route('/api/treinamento', methods=['POST'])
-def cadastrar_treinamento():
-    conn = None
-    try:
-        dados = request.get_json()
-        treino = Treinamento(dados['nome_treinamento'], dados['validade_meses'])
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        sql = "INSERT INTO DimTreinamentos (nome_treinamento, validade_meses) VALUES (%s, %s)"
-        cursor.execute(sql, (treino.nome_treinamento, treino.validade_meses))
-        conn.commit()
-        return jsonify({"mensagem": "Treinamento cadastrado!"}), 201
-    except Exception as e:
-        if conn: conn.rollback()
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-@app.route('/api/treinamento', methods=['GET'])
-def listar_treinamentos():
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM DimTreinamentos")
-        treinamentos = cursor.fetchall()
-        return jsonify(treinamentos), 200
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-@app.route('/api/treinamento/<int:id>', methods=['PUT'])
-def atualizar_treinamento(id):
-    conn = None
-    try:
-        dados = request.get_json()
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        sql = "UPDATE DimTreinamentos SET nome_treinamento = %s, validade_meses = %s WHERE id_treinamento = %s"
-        cursor.execute(sql, (dados['nome_treinamento'], dados['validade_meses'], id))
-        conn.commit()
-        if cursor.rowcount == 0: return jsonify({"mensagem": "Treinamento não encontrado."}), 404
-        return jsonify({"mensagem": "Treinamento atualizado!"}), 200
-    except Exception as e:
-        if conn: conn.rollback()
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-@app.route('/api/treinamento/<int:id>', methods=['DELETE'])
-def excluir_treinamento(id):
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM DimTreinamentos WHERE id_treinamento = %s", (id,))
-        conn.commit()
-        if cursor.rowcount == 0: return jsonify({"mensagem": "Treinamento não encontrado."}), 404
-        return jsonify({"mensagem": "Treinamento excluído!"}), 200
-    except Exception as e:
-        if conn: conn.rollback()
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-# =========================================================
-# 3. ROTAS PARA REGISTROS (FATO)
-# =========================================================
-
-@app.route('/api/registros', methods=['POST'])
-def registrar_treinamento():
-    conn = None
-    try:
-        dados = request.get_json()
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+    <main class="container">
         
-        cursor.execute("SELECT validade_meses FROM DimTreinamentos WHERE id_treinamento = %s", (dados['id_treinamento'],))
-        treino = cursor.fetchone()
-        
-        if not treino:
-            return jsonify({"erro": "Treinamento não encontrado"}), 404
-        
-        validade = treino['validade_meses']
-        
-        sql = """
-            INSERT INTO FactRegistros 
-            (id_funcionario, id_treinamento, data_realizacao, data_vencimento) 
-            VALUES (%s, %s, %s, DATE_ADD(%s, INTERVAL %s MONTH))
-        """
-        
-        cursor.execute(sql, (
-            dados['id_funcionario'], 
-            dados['id_treinamento'], 
-            dados['data_realizacao'], 
-            dados['data_realizacao'], 
-            validade
-        ))
-        
-        conn.commit()
-        return jsonify({"mensagem": "Registro criado com data de vencimento calculada!"}), 201
-    except Exception as e:
-        if conn: conn.rollback()
-        return jsonify({"erro": f"Erro ao processar registro: {str(e)}"}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-@app.route('/api/registros', methods=['GET'])
-def listar_registros():
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        sql = """
-            SELECT R.id_registro, F.nome AS funcionario, T.nome_treinamento, R.data_realizacao, R.data_vencimento, R.status
-            FROM FactRegistros R
-            JOIN DimFuncionarios F ON R.id_funcionario = F.id_funcionario
-            JOIN DimTreinamentos T ON R.id_treinamento = T.id_treinamento
-        """
-        cursor.execute(sql)
-        registros = cursor.fetchall()
-        return jsonify(registros), 200
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
-
-# =========================================================
-# #### API DISPAROS DE AVISO (SMS + WHATSAPP INTEGRADOS)
-# =========================================================
-
-@app.route('/api/notificar-vencimentos', methods=['POST'])
-def notificar_vencimentos():
-    conn = None
-    try:
-        # Carrega as credenciais seguras do arquivo .env
-        account_sid = os.getenv('TWILIO_ACCOUNT_SID')
-        auth_token = os.getenv('TWILIO_AUTH_TOKEN')
-        from_number = os.getenv('TWILIO_PHONE_NUMBER')
-        
-        client = Client(account_sid, auth_token)
-        
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        
-        # Query para buscar registros que vencem nos próximos 30 dias
-        sql = """
-            SELECT R.*, F.nome, F.telefone, T.nome_treinamento 
-            FROM FactRegistros R
-            JOIN DimFuncionarios F ON R.id_funcionario = F.id_funcionario
-            JOIN DimTreinamentos T ON R.id_treinamento = T.id_treinamento
-            WHERE R.data_vencimento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
-        """
-        cursor.execute(sql)
-        vencendo = cursor.fetchall()
-        
-        contador_sucesso = 0
-        for reg in vencendo:
-            # Sanitiza o número do banco de dados antes do envio
-            telefone_limpo = formatar_para_twilio(reg['telefone'])
+        <section class="card p-4 shadow-sm border-0 mb-4" aria-labelledby="tituloFormulario">
+            <h2 class="h5 fw-bold text-secondary mb-3" id="tituloFormulario">📇 Cadastro / Edição de Colaborador</h2>
             
-            # Validação defensiva básica para evitar strings vazias ou nulas
-            if not telefone_limpo or len(telefone_limpo) < 10:
-                print(f"Pulo: Colaborador {reg['nome']} ignorado por falta de telefone válido.")
-                continue
-            
-            # Personaliza a mensagem corporativa
-            mensagem = f"Olá {reg['nome']}, seu treinamento de {reg['nome_treinamento']} vence em breve no dia {reg['data_vencimento']}."
-            
-            # 1. Disparo de canal tradicional via SMS
-            client.messages.create(
-                body=mensagem,
-                from_=from_number,
-                to=telefone_limpo
-            )
-            
-            # 2. Disparo de canal instantâneo via WhatsApp
-        whatsapp_from = os.getenv('TWILIO_WHATSAPP_NUMBER')
-        client.messages.create(
-             body=mensagem,
-             from_=f"whatsapp:{whatsapp_from}",
-             to=f"whatsapp:{telefone_limpo}"
-           )
-            
-        return jsonify({"mensagem": f"{contador_sucesso} notificações enviadas com sucesso via SMS e WhatsApp!"}), 200
+            <form id="formFuncionario" onsubmit="processarFormulario(event)">
+                <input type="hidden" id="id_funcionario" name="id_funcionario">
 
-    except Exception as e:
-        # Registra a exceção no console para fins de depuração
-        print(f"Erro ao notificar: {str(e)}")
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if conn and conn.is_connected():
-            cursor.close()
-            conn.close()
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small fw-bold">Nome Completo</label>
+                        <input type="text" id="nome" name="nome" class="form-control form-control-sm" placeholder="Ex: João da Silva" required>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small fw-bold">CPF</label>
+                        <input type="text" id="cpf" name="cpf" class="form-control form-control-sm" placeholder="000.000.000-00" required>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small fw-bold">Cargo</label>
+                        <input type="text" id="cargo" name="cargo" class="form-control form-control-sm" placeholder="Ex: Técnico de Operações" required>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label small fw-bold">Setor</label>
+                        <input type="text" id="setor" name="setor" class="form-control form-control-sm" placeholder="Ex: Produção" required>
+                    </div>
+                </div>
 
-if __name__ == '__main__':
-    app.run(debug=True)
+                <div class="mt-3 d-flex gap-2 justify-content-end">
+                    <button type="button" id="btnCancelar" class="btn btn-sm btn-secondary d-none" onclick="restaurarEstadoFormulario()">Cancelar Edição</button>
+                    <button type="submit" id="btnSalvar" class="btn btn-sm btn-success fw-bold">Salvar Colaborador</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="card p-4 shadow-sm border-0">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h5 fw-bold text-secondary m-0">📋 Consultar Colaboradores Ativos</h2>
+                <div class="d-flex gap-2">
+                    <input type="text" id="buscaNome" class="form-control form-control-sm" placeholder="Filtrar por nome...">
+                    <button class="btn btn-sm btn-primary" onclick="consultarFuncionarios()"><i class="bi bi-search"></i> Buscar</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle m-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome Completo</th>
+                            <th>CPF</th>
+                            <th>Cargo</th>
+                            <th>Setor</th>
+                            <th class="text-center">Ações Gerenciais (U/D)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoTabela">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="text-center text-muted small py-4 mt-5 border-top">
+        <p class="m-0">&copy; 2026 CLAM Tech & Data - Engenharia de Software Aplicada.</p>
+    </footer>
+
+    <script>
+        // Endpoint base mapeado para o servidor Flask local executado em ambiente de desenvolvimento
+        const API_URL = "http://127.0.0.1:5000/api/funcionario";
+
+        // Executa automaticamente a consulta de dados assim que a árvore do DOM estiver carregada
+        document.addEventListener("DOMContentLoaded", consultarFuncionarios);
+
+        // 1. OPERAÇÃO READ: BUSCAR/CONSULTAR DADOS DA API (GET)
+        async function consultarFuncionarios() {
+            const corpo = document.getElementById("corpoTabela");
+            const busca = document.getElementById("buscaNome").value;
+            
+            // Injeta um feedback de carregamento assíncrono para melhorar a UX
+            corpo.innerHTML = `<tr><td colspan="6" class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm"></div> Consultando banco MySQL...</td></tr>`;
+
+            try {
+                // Monta a URL aceitando o parâmetro opcional de Query String cadastrado no seu app.py
+                const urlCompleta = busca ? `${API_URL}/buscar?nome=${encodeURIComponent(busca)}` : `${API_URL}/buscar`;
+                const resposta = await fetch(urlCompleta);
+                
+                if (!resposta.ok) throw new Error("Falha ao ler dados do servidor.");
+                
+                const funcionarios = await resposta.json();
+                corpo.innerHTML = ""; // Limpa o indicador de carregamento
+
+                if(funcionarios.length === 0) {
+                    corpo.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nenhum funcionário encontrado.</td></tr>`;
+                    return;
+                }
+
+                // Laço de repetição forEach varrendo o JSON e gerando as linhas do HTML
+                funcionarios.forEach(func => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td>${func.id_funcionario}</td>
+                        <td class="fw-bold text-dark">${func.nome}</td>
+                        <td>${func.cpf}</td>
+                        <td>${func.cargo}</td>
+                        <td><span class="badge bg-secondary">${func.setor}</span></td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-warning me-1" onclick='prepararEdicao(${JSON.stringify(func)})'>
+                                <i class="bi bi-pencil-square"></i> Editar
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="excluirFuncionario(${func.id_funcionario})">
+                                <i class="bi bi-trash3"></i> Excluir
+                            </button>
+                        </td>
+                    `;
+                    corpo.appendChild(tr);
+                });
+            } catch (erro) {
+                corpo.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">Erro: ${erro.message}</td></tr>`;
+            }
+        }
+
+        // 2. CONTROLADOR FLUXO: IDENTIFICA SE É UM NOVO CADASTRO (POST) OU ATUALIZAÇÃO (PUT)
+        async function processarFormulario(event) {
+            event.preventDefault(); // Impede o recarregamento automático da página
+
+            const id = document.getElementById("id_funcionario").value;
+            const payload = {
+                nome: document.getElementById("nome").value,
+                cpf: document.getElementById("cpf").value,
+                cargo: document.getElementById("cargo").value,
+                setor: document.getElementById("setor").value,
+                // Workaround defensivo: Envia strings vazias para bater com os argumentos obrigatórios do seu construtor Funcionario no Python
+                email: "", telefone: "", whatsapp: "" 
+            };
+
+            try {
+                let resposta;
+                if (id) {
+                    // Se o ID existir no campo oculto, executa a Operação UPDATE (PUT)
+                    resposta = await fetch(`${API_URL}/${id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    // Se o campo oculto estiver vazio, executa a Operação CREATE (POST)
+                    resposta = await fetch(API_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                if (!resposta.ok) throw new Error("Erro ao salvar dados.");
+                
+                const resultado = await resposta.json();
+                alert(resultado.mensagem);
+                
+                restaurarEstadoFormulario();
+                consultarFuncionarios(); // Atualiza a listagem automaticamente na tela única
+            } catch (erro) {
+                alert("Erro operacional: " + erro.message);
+            }
+        }
+
+        // 3. PREPARAÇÃO DO UPDATE: CAPTURA OS DADOS DA TABELA E JOGA NOS INPUTS DO FORMULÁRIO
+        function prepararEdicao(func) {
+            document.getElementById("id_funcionario").value = func.id_funcionario;
+            document.getElementById("nome").value = func.nome;
+            document.getElementById("cpf").value = func.cpf;
+            document.getElementById("cargo").value = func.cargo;
+            document.getElementById("setor").value = func.setor;
+
+            // Altera elementos visuais para indicar o estado de edição ao aluno
+            document.getElementById("tituloFormulario").innerText = "📝 Editando Colaborador ID: " + func.id_funcionario;
+            document.getElementById("btnSalvar").className = "btn btn-sm btn-warning fw-bold";
+            document.getElementById("btnSalvar").innerText = "Atualizar Dados";
+            document.getElementById("btnCancelar").classList.remove("d-none");
+        }
+
+        // 4. OPERAÇÃO DELETE: EXCLUIR REGISTRO DO BANCO DE DADOS (DELETE)
+        async function excluirFuncionario(id) {
+            if (!confirm("Tem certeza que deseja remover este colaborador do sistema de SST?")) return;
+
+            try {
+                const resposta = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+                if (!resposta.ok) throw new Error("Não foi possível deletar o registro.");
+                
+                const resultado = await resposta.json();
+                alert(resultado.mensagem);
+                consultarFuncionarios(); // Sincroniza a tabela imediatamente
+            } catch (erro) {
+                alert("Erro ao excluir: " + erro.message);
+            }
+        }
+
+        // FUNÇÃO AUXILIAR: LIMPA FORMULÁRIO E RESTAURA O ESTADO VISUAL DA TELA
+        function restaurarEstadoFormulario() {
+            document.getElementById("formFuncionario").reset();
+            document.getElementById("id_funcionario").value = "";
+            document.getElementById("tituloFormulario").innerText = "📇 Cadastro de Colaborador";
+            document.getElementById("btnSalvar").className = "btn btn-sm btn-success fw-bold";
+            document.getElementById("btnSalvar").innerText = "Salvar Colaborador";
+            document.getElementById("btnCancelar").className = "btn btn-sm btn-secondary d-none";
+        }
+
+        // 5. ACIONADOR OMNICHANNEL: DISPARAR ALERTAS VIA TWILIO
+        async function dispararTwilio() {
+            const btn = document.getElementById("btnTwilio");
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Notificando...`;
+
+            try {
+                const resposta = await fetch("http://127.0.0.1:5000/api/notificar-vencimentos", { method: "POST" });
+                const resultado = await resposta.json();
+                alert(resultado.mensagem || "Processamento concluído!");
+            } catch (erro) {
+                alert("Erro ao acionar Twilio: " + erro.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="bi bi-whatsapp"></i> Notificar Vencimentos`;
+            }
+        }
+    </script>
+</body>
+</html>
