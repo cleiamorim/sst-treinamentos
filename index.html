@@ -1,249 +1,1000 @@
 <!DOCTYPE html>
+<!-- Declara para o navegador que este documento usa HTML5, o padrão moderno para páginas da web -->
 <html lang="pt-BR">
 <head>
+    <!-- Define o conjunto de caracteres para suportar acentos e símbolos em português -->
     <meta charset="UTF-8">
+    <!-- Ajusta a escala da página em dispositivos móveis para ficar legível em celulares e tablets -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLAM SST 4.0 - Painel de Controle Semântico</title>
+    <!-- Título exibido na aba do navegador e usado pelos buscadores -->
+    <title>CL31 WEB APP SST 4.0 - Plataforma Integrada de Segurança</title>
 
+    <!-- Importa o CSS do Bootstrap para usar estilos prontos, componentes e grid responsivo -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Importa ícones do Bootstrap Icons para usar símbolos visuais como botões e títulos -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --sst-green: #198754;
+            --sst-green-dark: #0f5132;
+            --sst-warning: #ffc107;
+            --sst-danger: #dc3545;
+            --sst-muted: #6c757d;
+        }
+
+        body {
+            background: linear-gradient(180deg, #f8f9fa 0%, #eef4f1 100%);
+            min-height: 100vh;
+        }
+
+        .bg-gradient-green { background: linear-gradient(135deg, var(--sst-green), var(--sst-green-dark)); }
+        .bg-gradient-yellow { background: linear-gradient(135deg, var(--sst-warning), #9a7300); }
+        .bg-gradient-red { background: linear-gradient(135deg, var(--sst-danger), #842029); }
+        .bg-gradient-dark { background: linear-gradient(135deg, #212529, #343a40); }
+
+        .kpi-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: none;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.12) !important;
+        }
+
+        .icon-floating {
+            font-size: 2.5rem;
+            opacity: 0.25;
+            position: absolute;
+            right: 15px;
+            bottom: 10px;
+        }
+
+        .nav-pills .nav-link {
+            border-radius: 999px;
+            padding: 0.6rem 1rem;
+        }
+
+        .nav-pills .nav-link.active {
+            background-color: var(--sst-green) !important;
+            color: #fff !important;
+        }
+
+        .card {
+            border-radius: 1rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: rgba(25, 135, 84, 0.35);
+            box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.15);
+        }
+
+        .table thead th {
+            font-size: 0.8rem;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(25, 135, 84, 0.06);
+        }
+
+        .soft-card {
+            background: #fff;
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+    </style>
 </head>
 <body class="bg-light text-dark">
-    <header class="bg-dark text-white py-3 mb-4 shadow-sm">
+
+    <!-- Cabeçalho principal do sistema com logo, nome e botão de ação -->
+    <header class="bg-dark text-white py-3 mb-4 shadow border-bottom border-success border-3">
         <div class="container d-flex justify-content-between align-items-center">
             <div>
-                <h1 class="h4 m-0 text-success fw-bold"><i class="bi bi-shield-fill-check"></i> CLAM SST 4.0</h1>
-                <p class="small m-0 text-secondary">Sistema de Gestão e Conformidade de Segurança do Trabalho</p>
+                <!-- Título principal do site com ícone de segurança -->
+                <h1 class="h4 m-0 text-success fw-bold"><i class="bi bi-shield-fill-check"></i> CL31 WEB APP SST 4.0</h1>
+                <!-- Descrição pequena do projeto -->
+                <p class="small m-0 text-secondary">Analytics & Inteligência em Prevenção de Riscos</p>
             </div>
-            <button class="btn btn-sm btn-danger fw-bold" id="btnTwilio" onclick="dispararTwilio()">
+            <!-- Botão que chama a função JavaScript dispararTwilio() quando clicado -->
+            <button class="btn btn-danger fw-bold shadow-sm d-flex align-items-center gap-2" id="btnTwilio" onclick="dispararTwilio()">
                 <i class="bi bi-whatsapp"></i> Notificar Vencimentos
             </button>
         </div>
     </header>
 
+    <!-- Corpo principal da página dentro de um container Bootstrap centralizado -->
     <main class="container">
         
-        <section class="card p-4 shadow-sm border-0 mb-4" aria-labelledby="tituloFormulario">
-            <h2 class="h5 fw-bold text-secondary mb-3" id="tituloFormulario">📇 Cadastro / Edição de Colaborador</h2>
+        <!-- Seção de KPIs: indicadores rápidos em três cards coloridos -->
+        <section class="row g-3 mb-4" aria-label="Painel de Métricas">
+            <div class="col-12 col-sm-4">
+                <div class="card kpi-card bg-gradient-green text-white p-3 shadow-sm position-relative">
+                    <div class="small fw-bold text-uppercase opacity-75">Total de Registros</div>
+                    <!-- Elemento onde o JavaScript coloca o número total de registros -->
+                    <div class="h2 fw-bold my-1" id="kpiTotal">0</div> <div class="small opacity-75">Capacitações mapeadas</div>
+                    <i class="bi bi-bookmark-check-fill icon-floating"></i>
+                </div>
+            </div>
+            <div class="col-12 col-sm-4">
+                <div class="card kpi-card bg-gradient-yellow text-white p-3 shadow-sm position-relative">
+                    <div class="small fw-bold text-uppercase opacity-75">Alerta de Vencimento (-30 dias)</div>
+                    <div class="h2 fw-bold my-1" id="kpiAlerta">0</div>
+                    <div class="small opacity-75">Exigem renovação imediata</div>
+                    <i class="bi bi-exclamation-triangle-fill icon-floating"></i>
+                </div>
+            </div>
+            <div class="col-12 col-sm-4">
+                <div class="card kpi-card bg-gradient-red text-white p-3 shadow-sm position-relative">
+                    <div class="small fw-bold text-uppercase opacity-75">Treinamentos Vencidos</div>
+                    <div class="h2 fw-bold my-1" id="kpiVencidos">0</div>
+                    <div class="small opacity-75">Colaboradores irregulares</div>
+                    <i class="bi bi-shield-x icon-floating"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navegação por abas para alternar entre módulos de Funcionários, Treinamentos e Registros -->
+        <ul class="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm gap-2" id="modulosSST" role="tablist">
+            <li class="nav-item" role="presentation">
+                <!-- Botão que abre o painel de funcionários e chama a função consultarFuncionarios() -->
+                <button class="nav-link active fw-bold" id="tab-funcionarios" data-bs-toggle="pill" data-bs-target="#panel-funcionarios" type="button" role="tab" onclick="consultarFuncionarios()"><i class="bi bi-people-fill"></i> Funcionários</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <!-- Botão que abre o painel de treinamentos e chama a função listarTreinamentos() -->
+                <button class="nav-link fw-bold" id="tab-treinamentos" data-bs-toggle="pill" data-bs-target="#panel-treinamentos" type="button" role="tab" onclick="listarTreinamentos()"><i class="bi bi-journal-bookmark-fill"></i> Treinamentos (NRs)</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <!-- Botão que abre o painel de registros e chama a função listarRegistros() -->
+                <button class="nav-link fw-bold" id="tab-registros" data-bs-toggle="pill" data-bs-target="#panel-registros" type="button" role="tab" onclick="listarRegistros()"><i class="bi bi-file-earmark-medical-fill"></i> Registros</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="tab-relatorio" data-bs-toggle="pill" data-bs-target="#panel-relatorio" type="button" role="tab" onclick="listarRegistros()"><i class="bi bi-bar-chart-line-fill"></i> Relatório</button>
+            </li>
+        </ul>
+
+        <!-- Conteúdo das abas: cada div abaixo é um painel diferente mostrado quando a aba correspondente está ativa -->
+        <div class="tab-content" id="conteudoModulos">
             
-            <form id="formFuncionario" onsubmit="processarFormulario(event)">
-                <input type="hidden" id="id_funcionario" name="id_funcionario">
+            <div class="tab-pane fade show active" id="panel-funcionarios" role="tabpanel">
+                <!-- Painel de cadastro e listagem de funcionários -->
+                <div class="card p-4 shadow-sm border-0 mb-4">
+                    <h2 class="h5 fw-bold text-secondary mb-3" id="tituloFormFuncionario">📇 Cadastro de Colaborador</h2>
+                    <!-- Formulário de cadastro de funcionário. submit chama processarFormFuncionario(event) -->
+                    <form id="formFuncionario" onsubmit="processarFormFuncionario(event)">
+                        <!-- Campo oculto usado para guardar o ID quando estamos editando um funcionário existente -->
+                        <input type="hidden" id="id_funcionario">
+                        
+                        <div class="row g-3 mb-3">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label small fw-bold">Nome Completo</label>
+                                <input type="text" id="func_nome" class="form-control form-control-sm" required>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label small fw-bold">CPF</label>
+                                <input type="text" id="func_cpf" class="form-control form-control-sm" placeholder="000.000.000-00" required>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label small fw-bold">Cargo</label>
+                                <input type="text" id="func_cargo" class="form-control form-control-sm" required>
+                            </div>
+                            <div class="col-12 col-md-2">
+                                <label class="form-label small fw-bold">Setor</label>
+                                <input type="text" id="func_setor" class="form-control form-control-sm" required>
+                            </div>
+                        </div>
 
-                <div class="row g-3">
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small fw-bold">Nome Completo</label>
-                        <input type="text" id="nome" name="nome" class="form-control form-control-sm" placeholder="Ex: João da Silva" required>
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <label class="form-label small fw-bold">CPF</label>
-                        <input type="text" id="cpf" name="cpf" class="form-control form-control-sm" placeholder="000.000.000-00" required>
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <label class="form-label small fw-bold">Cargo</label>
-                        <input type="text" id="cargo" name="cargo" class="form-control form-control-sm" placeholder="Ex: Técnico de Operações" required>
-                    </div>
-                    <div class="col-12 col-md-2">
-                        <label class="form-label small fw-bold">Setor</label>
-                        <input type="text" id="setor" name="setor" class="form-control form-control-sm" placeholder="Ex: Produção" required>
-                    </div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label small fw-bold"><i class="bi bi-envelope-at"></i> E-mail Corporativo</label>
+                                <input type="email" id="func_email" class="form-control form-control-sm" placeholder="exemplo@empresa.com" required>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label small fw-bold"><i class="bi bi-telephone"></i> Telefone / SMS</label>
+                                <input type="text" id="func_telefone" class="form-control form-control-sm" placeholder="(31) 99999-9999" required>
+                            </div>
+                            <div class="col-11 col-md-4">
+                                <label class="form-label small fw-bold"><i class="bi bi-whatsapp text-success"></i> WhatsApp Notificações</label>
+                                <input type="text" id="func_whatsapp" class="form-control form-control-sm" placeholder="(31) 99999-9999" required>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 d-flex gap-2 justify-content-end">
+                            <!-- Botão de cancelar usado apenas em modo de edição de funcionário -->
+                            <button type="button" id="btnCancelFunc" class="btn btn-sm btn-secondary d-none" onclick="restaurarFormFuncionario()">Cancelar</button>
+                            <!-- Botão de enviar formulário que salva ou atualiza o colaborador -->
+                            <button type="submit" id="btnSaveFunc" class="btn btn-sm btn-success fw-bold">Salvar Colaborador</button>
+                        </div>
+                    </form>
                 </div>
 
-                <div class="mt-3 d-flex gap-2 justify-content-end">
-                    <button type="button" id="btnCancelar" class="btn btn-sm btn-secondary d-none" onclick="restaurarEstadoFormulario()">Cancelar Edição</button>
-                    <button type="submit" id="btnSalvar" class="btn btn-sm btn-success fw-bold">Salvar Colaborador</button>
-                </div>
-            </form>
-        </section>
-
-        <section class="card p-4 shadow-sm border-0">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2 class="h5 fw-bold text-secondary m-0">📋 Consultar Colaboradores Ativos</h2>
-                <div class="d-flex gap-2">
-                    <input type="text" id="buscaNome" class="form-control form-control-sm" placeholder="Filtrar por nome...">
-                    <button class="btn btn-sm btn-primary" onclick="consultarFuncionarios()"><i class="bi bi-search"></i> Buscar</button>
+                <!-- Seção de listagem de funcionários com campo de busca e tabela -->
+                <div class="card p-4 shadow-sm border-0">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="h6 fw-bold m-0 text-muted">Lista de Funcionários</h3>
+                        <div class="d-flex gap-2">
+                            <input type="text" id="buscaNome" class="form-control form-control-sm" placeholder="Buscar por nome...">
+                            <button class="btn btn-sm btn-primary" onclick="consultarFuncionarios()"><i class="bi bi-search"></i></button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle m-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Matrícula</th>
+                                    <th>Nome</th>
+                                    <th>CPF</th>
+                                    <th>Cargo / Setor</th>
+                                    <th>Informações de Contato</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <!-- O JavaScript preenche o corpo desta tabela com os funcionários retornados do servidor -->
+                            <tbody id="corpoFuncionarios"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <div class="table-responsive">
-                <table class="table table-hover align-middle m-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>ID</th>
-                            <th>Nome Completo</th>
-                            <th>CPF</th>
-                            <th>Cargo</th>
-                            <th>Setor</th>
-                            <th class="text-center">Ações Gerenciais (U/D)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="corpoTabela">
-                        </tbody>
-                </table>
+            <div class="tab-pane fade" id="panel-treinamentos" role="tabpanel">
+                <!-- Painel de cadastro e listagem de treinamentos / normas -->
+                <div class="card p-4 shadow-sm border-0 mb-4">
+                    <h2 class="h5 fw-bold text-secondary mb-3" id="tituloFormTreino">📚 Cadastro de Grade de Treinamento (Normas)</h2>
+                    <form id="formTreinamento" onsubmit="processarFormTreinamento(event)">
+                        <input type="hidden" id="id_treinamento">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label small fw-bold">Nome do Treinamento / Norma Regulamentadora</label>
+                                <input type="text" id="treino_nome" class="form-control form-control-sm" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Validade (Em Meses)</label>
+                                <input type="number" id="treino_validade" class="form-control form-control-sm" required>
+                            </div>
+                        </div>
+                        <div class="mt-3 d-flex gap-2 justify-content-end">
+                            <button type="button" id="btnCancelTreino" class="btn btn-sm btn-secondary d-none" onclick="restaurarFormTreinamento()">Cancelar</button>
+                            <button type="submit" id="btnSaveTreino" class="btn btn-sm btn-success fw-bold">Salvar Norma</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card p-4 shadow-sm border-0">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="h6 fw-bold m-0 text-muted">Lista de Treinamentos</h3>
+                        <div class="d-flex gap-2">
+                            <input type="text" id="buscaTreinamento" class="form-control form-control-sm" placeholder="Buscar por nome...">
+                            <button class="btn btn-sm btn-primary" onclick="listarTreinamentos()"><i class="bi bi-search"></i></button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle m-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nome Técnico do Treinamento</th>
+                                    <th>Validade Exigida</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <!-- O JavaScript preenche o corpo desta tabela com as normas cadastradas -->
+                            <tbody id="corpoTreinamentos"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-        </section>
+
+            <div class="tab-pane fade" id="panel-registros" role="tabpanel">
+                <div class="card p-4 shadow-sm border-0 mb-4">
+                    <h2 class="h5 fw-bold text-secondary mb-3" id="tituloFormRegistro">⚖️ Lançar Histórico Executivo de Treinamento</h2>
+                    <form id="formRegistro" onsubmit="processarFormRegistro(event)">
+                        <input type="hidden" id="id_registro">
+                        
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold">Selecionar Colaborador</label>
+                                <select id="reg_funcionario" class="form-select form-select-sm" required>
+                                    <option value="">Carregando...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold">Selecionar Treinamento Concluído</label>
+                                <select id="reg_treinamento" class="form-select form-select-sm" required>
+                                    <option value="">Carregando...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold">Data de Realização</label>
+                                <input type="date" id="reg_data" class="form-control form-control-sm" required>
+                            </div>
+                        </div>
+                        <div class="mt-3 d-flex gap-2 justify-content-end">
+                            <button type="button" id="btnCancelRegistro" class="btn btn-sm btn-secondary d-none" onclick="restaurarFormRegistro()">Cancelar</button>
+                            <button type="submit" id="btnSaveRegistro" class="btn btn-sm btn-success fw-bold">Homologar Treinamento</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card p-4 shadow-sm border-0 soft-card">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                        <div>
+                            <h3 class="h6 fw-bold m-0 text-muted">Fluxo de homologação</h3>
+                            <p class="small text-muted mb-0">Cadastre ou ajuste rapidamente os treinamentos concluídos e mantenha o histórico atualizado.</p>
+                        </div>
+                        <span class="badge bg-success-subtle text-success">Rápido e claro</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4">
+                            <div class="border rounded-3 p-3 bg-light">
+                                <div class="small fw-bold text-secondary">1. Selecione</div>
+                                <div class="small text-muted">Escolha o colaborador e a norma aplicável.</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="border rounded-3 p-3 bg-light">
+                                <div class="small fw-bold text-secondary">2. Registre</div>
+                                <div class="small text-muted">Defina a data de realização para manter a trilha de conformidade.</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="border rounded-3 p-3 bg-light">
+                                <div class="small fw-bold text-secondary">3. Acompanhe</div>
+                                <div class="small text-muted">Use o relatório para revisar risco e vencimentos com mais facilidade.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="panel-relatorio" role="tabpanel">
+                <div class="card p-4 shadow-sm border-0 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div>
+                            <h2 class="h5 fw-bold text-secondary mb-1">📊 Relatório de Treinamentos</h2>
+                            <p class="small text-muted mb-0">Filtre por período, treinamento e risco para acompanhar a conformidade.</p>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limparFiltrosRegistros()"><i class="bi bi-x-circle"></i> Limpar filtros</button>
+                    </div>
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-md-2">
+                            <label class="form-label small fw-bold">Nome</label>
+                            <input type="text" id="filtroNome" class="form-control form-control-sm" placeholder="Funcionário">
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label class="form-label small fw-bold">Matrícula</label>
+                            <input type="text" id="filtroMatricula" class="form-control form-control-sm" placeholder="0001">
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label class="form-label small fw-bold">Data inicial</label>
+                            <input type="date" id="filtroDataInicio" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label class="form-label small fw-bold">Data final</label>
+                            <input type="date" id="filtroDataFim" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small fw-bold">Tipo de treinamento</label>
+                            <select id="filtroTreinamento" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label class="form-label small fw-bold">Status de risco</label>
+                            <select id="filtroStatusRisco" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                <option value="EmDia">Em dia</option>
+                                <option value="Alerta">Alerta</option>
+                                <option value="Vencido">Vencido</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-1 d-grid">
+                            <button type="button" class="btn btn-success btn-sm fw-bold" onclick="listarRegistros()"><i class="bi bi-funnel"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+                        <div class="small text-muted" id="resumoFiltros">Mostrando todos os registros</div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-success btn-sm" onclick="exportarRelatorio('xlsx')"><i class="bi bi-file-earmark-excel"></i> XLSX</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="exportarRelatorio('csv')"><i class="bi bi-filetype-csv"></i> CSV</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card p-4 shadow-sm border-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle m-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Funcionário</th>
+                                    <th>Treinamento / Norma</th>
+                                    <th style="width: 18%;">Data de Realização</th>
+                                    <th style="width: 18%;">Próximo Vencimento</th>
+                                    <th>Status de Risco</th>
+                                    <th class="text-center">Ações Gerenciais</th>
+                                </tr>
+                            </thead>
+                            <!-- Tabela de registros: o JavaScript insere cada linha aqui com informações de riscos e ações -->
+                            <tbody id="corpoRegistros"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </main>
 
+    <!-- Rodapé com créditos e ano do projeto -->
     <footer class="text-center text-muted small py-4 mt-5 border-top">
-        <p class="m-0">&copy; 2026 CLAM Tech & Data - Engenharia de Software Aplicada.</p>
+        <p class="m-0">&copy; 2026 CLAM Tech & Data - Engenharia de Software Aplicada em SST.</p>
     </footer>
 
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
     <script>
-        // Endpoint base mapeado para o servidor Flask local executado em ambiente de desenvolvimento
-        const API_URL = "http://127.0.0.1:5000/api/funcionario";
+        function obterBaseUrlApi() {
+            const fallback = "http://127.0.0.1:5000/api";
 
-        // Executa automaticamente a consulta de dados assim que a árvore do DOM estiver carregada
-        document.addEventListener("DOMContentLoaded", consultarFuncionarios);
+            if (!window.location || !window.location.protocol.startsWith("http")) {
+                return fallback;
+            }
 
-        // 1. OPERAÇÃO READ: BUSCAR/CONSULTAR DADOS DA API (GET)
-        async function consultarFuncionarios() {
-            const corpo = document.getElementById("corpoTabela");
-            const busca = document.getElementById("buscaNome").value;
+            const { protocol, hostname, port } = window.location;
+            const hostAtual = `${protocol}//${hostname}${port ? `:${port}` : ""}`;
+
+            if (port === "5000" || hostname === "127.0.0.1" || hostname === "localhost") {
+                return port === "5000" ? `${hostAtual}/api` : fallback;
+            }
+
+            return fallback;
+        }
+
+        // URL base do back-end que o JavaScript usa para enviar e receber dados.
+        const BASE_URL = obterBaseUrlApi();
+        
+        // Variáveis globais que guardam os dados em memória enquanto o usuário navega na página.
+        // Isso evita chamadas desnecessárias ao servidor e mantém o estado da aplicação.
+        let estadoGlobal = { funcionarios: [], treinamentos: [] };
+        let registrosLocais = []; // Lista de registros usados especialmente para editar e atualizar os históricos
+
+        function mostrarMensagem(texto, tipo = "success") {
+            const container = document.getElementById("toastContainer");
+            if (!container) return;
+
+            const classes = {
+                success: "bg-success",
+                danger: "bg-danger",
+                warning: "bg-warning text-dark"
+            };
+            const icones = {
+                success: "bi-check-circle",
+                danger: "bi-exclamation-circle",
+                warning: "bi-exclamation-triangle"
+            };
+
+            const toastEl = document.createElement("div");
+            toastEl.className = `toast align-items-center text-white ${classes[tipo] || classes.success} border-0`;
+            toastEl.setAttribute("role", "alert");
+            toastEl.setAttribute("aria-live", "assertive");
+            toastEl.setAttribute("aria-atomic", "true");
+            toastEl.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body"><i class="bi ${icones[tipo] || icones.success} me-2"></i>${texto}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>`;
+
+            container.appendChild(toastEl);
+            const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+            toast.show();
+            toastEl.addEventListener("hidden.bs.toast", () => toastEl.remove());
+        }
+
+        // Evento que dispara quando toda a página HTML já foi carregada pelo navegador.
+        document.addEventListener("DOMContentLoaded", () => {
+            consultarFuncionarios(); // Busca e mostra os funcionários logo que a página abre
+            atualizarKPIs();         // Atualiza os indicadores do topo com dados atuais
+        });
+
+        /* =======================================================================================
+           🔧 TRATAMENTOS DE ENGENHARIA DE DATAS (BLINDAGEM CONTRA O BUG DE TIMEZONE SHIFT)
+           ======================================================================================= */
+
+        /**
+         * Função formatarDataBRNumérica:
+         * Recebe uma data no formato do banco e devolve uma data visual em DD/MM/AAAA.
+         * Adiciona também um ícone de calendário e garante que a data seja exibida corretamente.
+         */
+        function parsearDataSegura(dataString) {
+            if (!dataString) return null;
+            if (dataString instanceof Date) return isNaN(dataString.getTime()) ? null : dataString;
+
+            const texto = String(dataString).trim();
+            if (!texto) return null;
+
+            if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+                const [ano, mes, dia] = texto.split('-').map(Number);
+                return new Date(Date.UTC(ano, mes - 1, dia));
+            }
+
+            const d = new Date(texto);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        function formatarDataBRNumérica(dataString) {
+            const d = parsearDataSegura(dataString);
+            if(!d) return dataString ? String(dataString) : "---";
             
-            // Injeta um feedback de carregamento assíncrono para melhorar a UX
-            corpo.innerHTML = `<tr><td colspan="6" class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm"></div> Consultando banco MySQL...</td></tr>`;
+            // Usa valores UTC para evitar problemas de fuso horário do navegador
+            const dia = String(d.getUTCDate()).padStart(2, '0');
+            const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const ano = d.getUTCFullYear();
+            
+            return `<span class="text-dark fw-medium"><i class="bi bi-calendar3 text-secondary me-1"></i> ${dia}/${mes}/${ano}</span>`;
+        }
 
+        /**
+         * Função extrairDataISO:
+         * Converte a data recebida do banco para o formato ISO exigido pelo input type="date".
+         * Esse formato é AAAA-MM-DD e é escrito exatamente assim.
+         */
+        function extrairDataISO(dataString) {
+            const d = parsearDataSegura(dataString);
+            if(!d) return "";
+            const dia = String(d.getUTCDate()).padStart(2, '0');
+            const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const ano = d.getUTCFullYear();
+            return `${ano}-${mes}-${dia}`;
+        }
+
+        /* =======================================================================================
+           📊 MOTOR CALCULADOR: DASHBOARD ANALYTICS (KPIs INJECTOR)
+           ======================================================================================= */
+        async function atualizarKPIs() {
             try {
-                // Monta a URL aceitando o parâmetro opcional de Query String cadastrado no seu app.py
-                const urlCompleta = busca ? `${API_URL}/buscar?nome=${encodeURIComponent(busca)}` : `${API_URL}/buscar`;
-                const resposta = await fetch(urlCompleta);
+                // Busca os registros de treinamento no back-end
+                const res = await fetch(`${BASE_URL}/registros`);
+                if(!res.ok) return;
+                const registros = await res.json();
                 
-                if (!resposta.ok) throw new Error("Falha ao ler dados do servidor.");
+                // Coloca o total de registros no card correspondente
+                document.getElementById("kpiTotal").innerText = registros.length;
                 
-                const funcionarios = await resposta.json();
-                corpo.innerHTML = ""; // Limpa o indicador de carregamento
+                // Cria a referência do dia de hoje sem hora para comparar apenas dia/mês/ano
+                const hoje = new Date(); hoje.setHours(0,0,0,0);
+                const limiteAlerta = new Date(); limiteAlerta.setDate(hoje.getDate() + 30);
+                
+                let alertas = 0; let vencidos = 0;
 
-                if(funcionarios.length === 0) {
-                    corpo.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nenhum funcionário encontrado.</td></tr>`;
-                    return;
-                }
+                registros.forEach(r => {
+                    const dataVenc = parsearDataSegura(r.data_vencimento);
+                    if (!dataVenc) return;
 
-                // Laço de repetição forEach varrendo o JSON e gerando as linhas do HTML
-                funcionarios.forEach(func => {
+                    const dataVencLocal = new Date(dataVenc);
+                    dataVencLocal.setHours(0, 0, 0, 0);
+                    
+                    if (dataVencLocal < hoje || r.status === 'Vencido') { vencidos++; }
+                    else if (dataVencLocal >= hoje && dataVencLocal <= limiteAlerta) { alertas++; }
+                });
+                
+                document.getElementById("kpiAlerta").innerText = alertas;
+                document.getElementById("kpiVencidos").innerText = vencidos;
+            } catch (e) { console.error("Erro no processador analítico dos KPIs: ", e); }
+        }
+
+        /* =======================================================================================
+           🏢 MÓDULO CONTROLADOR: OPERAÇÕES CRUD DE FUNCIONÁRIOS
+           ======================================================================================= */
+        async function consultarFuncionarios() {
+            const corpo = document.getElementById("corpoFuncionarios");
+            const busca = document.getElementById("buscaNome").value;
+            corpo.innerHTML = `<tr><td colspan="6" class="text-center"><div class="spinner-border text-success spinner-border-sm"></div></td></tr>`;
+            try {
+                const url = busca ? `${BASE_URL}/funcionario/buscar?nome=${encodeURIComponent(busca)}` : `${BASE_URL}/funcionario/buscar`;
+                const res = await fetch(url); 
+                const dados = await res.json();
+                
+                estadoGlobal.funcionarios = dados; // Guarda os funcionários em memória
+                corpo.innerHTML = "";
+                
+                dados.forEach(f => {
                     const tr = document.createElement("tr");
                     tr.innerHTML = `
-                        <td>${func.id_funcionario}</td>
-                        <td class="fw-bold text-dark">${func.nome}</td>
-                        <td>${func.cpf}</td>
-                        <td>${func.cargo}</td>
-                        <td><span class="badge bg-secondary">${func.setor}</span></td>
+                        <td>${f.id_funcionario}</td>
+                        <td class="fw-bold text-dark">${f.nome}</td>
+                        <td>${f.cpf}</td>
+                        <td><div class="small fw-bold text-secondary">${f.cargo}</div><span class="badge bg-secondary">${f.setor}</span></td>
+                        <td>
+                            <div class="small"><i class="bi bi-envelope text-muted"></i> ${f.email || '---'}</div>
+                            <div class="small"><i class="bi bi-telephone text-muted"></i> ${f.telefone || '---'} | <i class="bi bi-whatsapp text-success"></i> ${f.whatsapp || '---'}</div>
+                        </td>
                         <td class="text-center">
-                            <button class="btn btn-sm btn-outline-warning me-1" onclick='prepararEdicao(${JSON.stringify(func)})'>
-                                <i class="bi bi-pencil-square"></i> Editar
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="excluirFuncionario(${func.id_funcionario})">
-                                <i class="bi bi-trash3"></i> Excluir
-                            </button>
+                            <button class="btn btn-outline-warning btn-sm me-1" onclick="prepararEdicaoFunc(${f.id_funcionario})"><i class="bi bi-pencil-square"></i></button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="excluirFuncionario(${f.id_funcionario})"><i class="bi bi-trash"></i></button>
                         </td>
                     `;
                     corpo.appendChild(tr);
                 });
-            } catch (erro) {
-                corpo.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">Erro: ${erro.message}</td></tr>`;
-            }
+                popularSelects(); // Atualiza as opções de funcionário nos formulários de registro
+            } catch(e) { corpo.innerHTML = `<tr><td colspan="6" class="text-danger">Erro de conexão local com a API de funcionários.</td></tr>`; }
         }
 
-        // 2. CONTROLADOR FLUXO: IDENTIFICA SE É UM NOVO CADASTRO (POST) OU ATUALIZAÇÃO (PUT)
-        async function processarFormulario(event) {
-            event.preventDefault(); // Impede o recarregamento automático da página
-
+        async function processarFormFuncionario(e) {
+            e.preventDefault(); // Impede que o formulário recarregue a página automaticamente
             const id = document.getElementById("id_funcionario").value;
             const payload = {
-                nome: document.getElementById("nome").value,
-                cpf: document.getElementById("cpf").value,
-                cargo: document.getElementById("cargo").value,
-                setor: document.getElementById("setor").value,
-                // Workaround defensivo: Envia strings vazias para bater com os argumentos obrigatórios do seu construtor Funcionario no Python
-                email: "", telefone: "", whatsapp: "" 
+                nome: document.getElementById("func_nome").value, cpf: document.getElementById("func_cpf").value,
+                cargo: document.getElementById("func_cargo").value, setor: document.getElementById("func_setor").value,
+                email: document.getElementById("func_email").value, telefone: document.getElementById("func_telefone").value, whatsapp: document.getElementById("func_whatsapp").value
             };
-
             try {
-                let resposta;
-                if (id) {
-                    // Se o ID existir no campo oculto, executa a Operação UPDATE (PUT)
-                    resposta = await fetch(`${API_URL}/${id}`, {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload)
-                    });
-                } else {
-                    // Se o campo oculto estiver vazio, executa a Operação CREATE (POST)
-                    resposta = await fetch(API_URL, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload)
-                    });
+                const url = id ? `${BASE_URL}/funcionario/${id}` : `${BASE_URL}/funcionario`;
+                const method = id ? "PUT" : "POST";
+                
+                const res = await fetch(url, { 
+                    method: method, 
+                    headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify(payload) 
+                });
+                const r = await res.json();
+                mostrarMensagem(r.mensagem || r.erro || "Operação concluída com sucesso.", res.ok ? "success" : "danger");
+                
+                restaurarFormFuncionario(); // Limpa o formulário após salvar
+                consultarFuncionarios();   // Recarrega a tabela de funcionários
+            } catch(err) { alert("Erro de comunicação ao salvar colaborador."); }
+        }
+
+        function prepararEdicaoFunc(id) {
+            const f = estadoGlobal.funcionarios.find(item => item.id_funcionario === id); 
+            if(!f) return;
+            
+            document.getElementById("id_funcionario").value = f.id_funcionario;
+            document.getElementById("func_nome").value = f.nome; document.getElementById("func_cpf").value = f.cpf;
+            document.getElementById("func_cargo").value = f.cargo; document.getElementById("func_setor").value = f.setor;
+            document.getElementById("func_email").value = f.email || ""; document.getElementById("func_telefone").value = f.telefone || ""; document.getElementById("func_whatsapp").value = f.whatsapp || "";
+            
+            document.getElementById("tituloFormFuncionario").innerText = "📝 Atualizar Dados de " + f.nome;
+            document.getElementById("btnSaveFunc").className = "btn btn-sm btn-warning fw-bold";
+            document.getElementById("btnCancelFunc").classList.remove("d-none");
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' }); // Leva o usuário de volta para o topo do formulário
+        }
+
+        async function excluirFuncionario(id) {
+            if(!confirm("Deseja remover este colaborador da base de SST?")) return;
+            try {
+                const res = await fetch(`${BASE_URL}/funcionario/${id}`, { method: "DELETE" });
+                const r = await res.json();
+                mostrarMensagem(r.mensagem || "Colaborador removido.", res.ok ? "success" : "danger");
+                consultarFuncionarios();
+                atualizarKPIs();
+            } catch(e) { mostrarMensagem("Erro ao deletar colaborador.", "danger"); }
+        }
+
+        function restaurarFormFuncionario() {
+            document.getElementById("formFuncionario").reset(); 
+            document.getElementById("id_funcionario").value = "";
+            document.getElementById("tituloFormFuncionario").innerText = "📇 Cadastro de Colaborador";
+            document.getElementById("btnSaveFunc").className = "btn btn-sm btn-success fw-bold";
+            document.getElementById("btnCancelFunc").classList.add("d-none");
+        }
+
+        /* =======================================================================================
+           📚 MÓDULO CONTROLADOR: OPERAÇÕES CRUD DE GRADE DE TREINAMENTOS (NRs)
+           ======================================================================================= */
+        async function listarTreinamentos() {
+            const width = document.getElementById("corpoTreinamentos");
+            const busca = document.getElementById("buscaTreinamento").value;
+            width.innerHTML = `<tr><td colspan="4" class="text-center"><div class="spinner-border text-success spinner-border-sm"></div></td></tr>`;
+            try {
+                const url = busca ? `${BASE_URL}/treinamento/buscar?nome=${encodeURIComponent(busca)}` : `${BASE_URL}/treinamento`;
+                const res = await fetch(url); 
+                const dados = await res.json();
+                estadoGlobal.treinamentos = dados; 
+                width.innerHTML = "";
+                
+                dados.forEach(t => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td>${t.id_treinamento}</td><td class="fw-bold text-dark">${t.nome_treinamento}</td>
+                        <td><span class="badge bg-dark">${t.validade_meses} Meses</span></td>
+                        <td class="text-center">
+                            <button class="btn btn-outline-warning btn-sm me-1" onclick="prepararEdicaoTreino(${t.id_treinamento})"><i class="bi bi-pencil-square"></i></button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="excluirTreinamento(${t.id_treinamento})"><i class="bi bi-trash"></i></button>
+                        </td>
+                    `;
+                    width.appendChild(tr);
+                });
+            } catch(e) { width.innerHTML = `<tr><td colspan="4" class="text-danger">Erro de carregamento das normas de segurança.</td></tr>`; }
+        }
+
+        async function processarFormTreinamento(e) {
+            e.preventDefault();
+            const id = document.getElementById("id_treinamento").value;
+            const payload = { nome_treinamento: document.getElementById("treino_nome").value, validade_meses: parseInt(document.getElementById("treino_validade").value) };
+            try {
+                const url = id ? `${BASE_URL}/treinamento/${id}` : `${BASE_URL}/treinamento`;
+                const method = id ? "PUT" : "POST";
+                const res = await fetch(url, { method: method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+                const r = await res.json();
+                mostrarMensagem(r.mensagem || r.erro || "Norma salva com sucesso.", res.ok ? "success" : "danger");
+                restaurarFormTreinamento();
+                listarTreinamentos();
+            } catch(err) { alert("Erro operacional de salvamento de grade."); }
+        }
+
+        function prepararEdicaoTreino(id) {
+            const t = estadoGlobal.treinamentos.find(item => item.id_treinamento === id); 
+            if(!t) return;
+            document.getElementById("id_treinamento").value = t.id_treinamento;
+            document.getElementById("treino_nome").value = t.nome_treinamento; 
+            document.getElementById("treino_validade").value = t.validade_meses;
+            
+            document.getElementById("tituloFormTreino").innerText = "📝 Atualizar Norma ID: " + t.id_treinamento;
+            document.getElementById("btnSaveTreino").className = "btn btn-sm btn-warning fw-bold";
+            document.getElementById("btnCancelTreino").classList.remove("d-none");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function excluirTreinamento(id) {
+            if(!confirm("Deseja excluir esta norma regulamentadora?")) return;
+            try {
+                const res = await fetch(`${BASE_URL}/treinamento/${id}`, { method: "DELETE" });
+                const r = await res.json();
+                mostrarMensagem(r.mensagem || "Norma removida.", res.ok ? "success" : "danger");
+                listarTreinamentos();
+                atualizarKPIs();
+            } catch(e) { mostrarMensagem("Erro de exclusão.", "danger"); }
+        }
+
+        function restaurarFormTreinamento() {
+            document.getElementById("formTreinamento").reset(); 
+            document.getElementById("id_treinamento").value = "";
+            document.getElementById("tituloFormTreino").innerText = "📚 Cadastro de Grade de Treinamento (Normas)";
+            document.getElementById("btnSaveTreino").className = "btn btn-sm btn-success fw-bold";
+            document.getElementById("btnCancelTreino").classList.add("d-none");
+        }
+
+        /* =======================================================================================
+           ⚖️ MÓDULO CONTROLADOR: CRUD DE REGISTROS DE TREINAMENTOS (HISTÓRICOS FATO)
+           ======================================================================================= */
+        async function listarRegistros() {
+            const corpo = document.getElementById("corpoRegistros");
+            const nome = document.getElementById("filtroNome").value;
+            const matricula = document.getElementById("filtroMatricula").value;
+            const dataInicio = document.getElementById("filtroDataInicio").value;
+            const dataFim = document.getElementById("filtroDataFim").value;
+            const idTreinamento = document.getElementById("filtroTreinamento").value;
+            const statusRisco = document.getElementById("filtroStatusRisco").value;
+
+            const params = new URLSearchParams();
+            if (nome) params.append('nome', nome);
+            if (matricula) params.append('matricula', matricula);
+            if (dataInicio) params.append('data_inicio', dataInicio);
+            if (dataFim) params.append('data_fim', dataFim);
+            if (idTreinamento) params.append('id_treinamento', idTreinamento);
+            if (statusRisco) params.append('status_risco', statusRisco);
+
+            corpo.innerHTML = `<tr><td colspan="7" class="text-center"><div class="spinner-border text-success spinner-border-sm"></div> Sincronizando banco relacional...</td></tr>`;
+            try {
+                const res = await fetch(`${BASE_URL}/registros?${params.toString()}`); 
+                const dados = await res.json();
+                registrosLocais = dados; // Guarda os registros em memória para editar depois
+                corpo.innerHTML = "";
+
+                const resumo = document.getElementById("resumoFiltros");
+                if (resumo) {
+                    const total = Array.isArray(dados) ? dados.length : 0;
+                    resumo.innerHTML = `Mostrando <strong>${total}</strong> registro${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}`;
                 }
 
-                if (!resposta.ok) throw new Error("Erro ao salvar dados.");
-                
-                const resultado = await resposta.json();
-                alert(resultado.mensagem);
-                
-                restaurarEstadoFormulario();
-                consultarFuncionarios(); // Atualiza a listagem automaticamente na tela única
-            } catch (erro) {
-                alert("Erro operacional: " + erro.message);
-            }
+                dados.forEach(r => {
+                    let statusColor = "#198754";
+                    let statusTitle = "Em dia";
+                    if(r.status === 'Vencido') {
+                        statusColor = "#dc3545";
+                        statusTitle = "Vencido";
+                    } else {
+                        const hoje = new Date(); hoje.setHours(0,0,0,0);
+                        const dataVenc = parsearDataSegura(r.data_vencimento);
+                        if (dataVenc) {
+                            const dataVencLocal = new Date(dataVenc);
+                            dataVencLocal.setHours(0,0,0,0);
+                            const dif = (dataVencLocal - hoje) / (1000 * 60 * 60 * 24);
+                            if(dif >= 1 && dif <= 30) {
+                                statusColor = "#ffc107";
+                                statusTitle = "Próximo do vencimento";
+                            } else if(dif <= 0) {
+                                statusColor = "#dc3545";
+                                statusTitle = "Vencido";
+                            }
+                        }
+                    }
+
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td>${r.id_registro}</td>
+                        <td class="fw-bold text-dark">${r.funcionario}</td>
+                        <td><span class="badge bg-dark-subtle text-dark border">${r.nome_treinamento}</span></td>
+                        <td>${formatarDataBRNumérica(r.data_realizacao)}</td>
+                        <td><strong class="text-success">${formatarDataBRNumérica(r.data_vencimento)}</strong></td>
+                        <td class="text-center">
+                            <span class="rounded-circle d-inline-block" style="width: 16px; height: 16px; background-color: ${statusColor}; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.15);" title="${statusTitle}"></span>
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-outline-warning btn-sm me-1" onclick="prepararEdicaoRegistro(${r.id_registro})"><i class="bi bi-pencil-square"></i></button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="excluirRegistroTreinamento(${r.id_registro})"><i class="bi bi-trash"></i></button>
+                        </td>
+                    `;
+                    corpo.appendChild(tr);
+                });
+            } catch(e) { corpo.innerHTML = `<tr><td colspan="7" class="text-danger">Erro de rede ao renderizar painel fato de SST.</td></tr>`; }
         }
 
-        // 3. PREPARAÇÃO DO UPDATE: CAPTURA OS DADOS DA TABELA E JOGA NOS INPUTS DO FORMULÁRIO
-        function prepararEdicao(func) {
-            document.getElementById("id_funcionario").value = func.id_funcionario;
-            document.getElementById("nome").value = func.nome;
-            document.getElementById("cpf").value = func.cpf;
-            document.getElementById("cargo").value = func.cargo;
-            document.getElementById("setor").value = func.setor;
-
-            // Altera elementos visuais para indicar o estado de edição ao aluno
-            document.getElementById("tituloFormulario").innerText = "📝 Editando Colaborador ID: " + func.id_funcionario;
-            document.getElementById("btnSalvar").className = "btn btn-sm btn-warning fw-bold";
-            document.getElementById("btnSalvar").innerText = "Atualizar Dados";
-            document.getElementById("btnCancelar").classList.remove("d-none");
-        }
-
-        // 4. OPERAÇÃO DELETE: EXCLUIR REGISTRO DO BANCO DE DADOS (DELETE)
-        async function excluirFuncionario(id) {
-            if (!confirm("Tem certeza que deseja remover este colaborador do sistema de SST?")) return;
-
+        async function processarFormRegistro(e) {
+            e.preventDefault();
+            const id = document.getElementById("id_registro").value;
+            const payload = {
+                id_funcionario: parseInt(document.getElementById("reg_funcionario").value),
+                id_treinamento: parseInt(document.getElementById("reg_treinamento").value),
+                data_realizacao: document.getElementById("reg_data").value
+            };
             try {
-                const resposta = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-                if (!resposta.ok) throw new Error("Não foi possível deletar o registro.");
+                const url = id ? `${BASE_URL}/registros/${id}` : `${BASE_URL}/registros`;
+                const method = id ? "PUT" : "POST";
+                const res = await fetch(url, { method: method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+                const r = await res.json();
+                mostrarMensagem(r.mensagem || r.erro || "Registro salvo com sucesso.", res.ok ? "success" : "danger");
                 
-                const resultado = await resposta.json();
-                alert(resultado.mensagem);
-                consultarFuncionarios(); // Sincroniza a tabela imediatamente
-            } catch (erro) {
-                alert("Erro ao excluir: " + erro.message);
+                restaurarFormRegistro();
+                listarRegistros();
+                atualizarKPIs();
+            } catch(err) { alert("Erro ao processar alteração da homologação."); }
+        }
+
+        function prepararEdicaoRegistro(id) {
+            const reg = registrosLocais.find(item => item.id_registro === id); 
+            if(!reg) return;
+            
+            const dataISO = extrairDataISO(reg.data_realizacao);
+
+            document.getElementById("id_registro").value = reg.id_registro;
+            document.getElementById("reg_data").value = dataISO; 
+
+            const selectFunc = document.getElementById("reg_funcionario");
+            const selectTreino = document.getElementById("reg_treinamento");
+            
+            if(reg.id_funcionario) { selectFunc.value = reg.id_funcionario; } 
+            else {
+                for (let i = 0; i < selectFunc.options.length; i++) {
+                    if (selectFunc.options[i].text.includes(reg.funcionario)) { selectFunc.selectedIndex = i; break; }
+                }
+            }
+
+            if(reg.id_treinamento) { selectTreino.value = reg.id_treinamento; } 
+            else {
+                for (let i = 0; i < selectTreino.options.length; i++) {
+                    if (selectTreino.options[i].text.includes(reg.nome_treinamento)) { selectTreino.selectedIndex = i; break; }
+                }
+            }
+
+            const tabRegistros = document.getElementById("tab-registros");
+            if (tabRegistros) {
+                const tab = new bootstrap.Tab(tabRegistros);
+                tab.show();
+            }
+
+            document.getElementById("tituloFormRegistro").innerText = `📝 Modificar Registro de Treinamento - Protocolo ID: ${reg.id_registro}`;
+            document.getElementById("btnSaveRegistro").className = "btn btn-sm btn-warning fw-bold text-dark";
+            document.getElementById("btnSaveRegistro").innerText = "Salvar Alterações";
+            document.getElementById("btnCancelRegistro").classList.remove("d-none");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function restaurarFormRegistro() {
+            document.getElementById("formRegistro").reset(); 
+            document.getElementById("id_registro").value = "";
+            document.getElementById("tituloFormRegistro").innerText = "⚖️ Lançar Histórico Executivo de Treinamento";
+            document.getElementById("btnSaveRegistro").className = "btn btn-sm btn-success fw-bold";
+            document.getElementById("btnSaveRegistro").innerText = "Homologar Treinamento";
+            document.getElementById("btnCancelRegistro").classList.add("d-none");
+        }
+
+        async function excluirRegistroTreinamento(id) {
+            if(!confirm("Deseja revogar essa homologação do banco de dados relacional?")) return;
+            try {
+                const res = await fetch(`${BASE_URL}/registros/${id}`, { method: "DELETE" });
+                const r = await res.json();
+                mostrarMensagem(r.mensagem || r.erro || "Registro removido.", res.ok ? "success" : "danger");
+                listarRegistros();
+                atualizarKPIs();
+            } catch(e) { mostrarMensagem("Erro ao remover registro fato.", "danger"); }
+        }
+
+        function exportarRelatorio(formato) {
+            const params = new URLSearchParams();
+            const filtros = [
+                ["filtroNome", "nome"],
+                ["filtroMatricula", "matricula"],
+                ["filtroDataInicio", "data_inicio"],
+                ["filtroDataFim", "data_fim"],
+                ["filtroTreinamento", "id_treinamento"],
+                ["filtroStatusRisco", "status_risco"]
+            ];
+
+            filtros.forEach(([inputId, paramName]) => {
+                const valor = document.getElementById(inputId)?.value;
+                if (valor) params.append(paramName, valor);
+            });
+
+            params.append("formato", formato);
+            const url = `${BASE_URL}/registros/exportar?${params.toString()}`;
+            window.open(url, "_blank", "noopener,noreferrer");
+            mostrarMensagem(`Baixando relatório em ${formato.toUpperCase()}...`, "success");
+        }
+
+        function limparFiltrosRegistros() {
+            document.getElementById("filtroNome").value = "";
+            document.getElementById("filtroMatricula").value = "";
+            document.getElementById("filtroDataInicio").value = "";
+            document.getElementById("filtroDataFim").value = "";
+            document.getElementById("filtroTreinamento").value = "";
+            document.getElementById("filtroStatusRisco").value = "";
+            listarRegistros();
+        }
+
+        /* =======================================================================================
+           🛠️ SUBSISTEMAS AUXILIARES INTEGRADOS: PRE-LOADERS E TELECOM (TWILIO)
+           ======================================================================================= */
+
+        function popularSelects() {
+            const selFunc = document.getElementById("reg_funcionario"); 
+            const selTreino = document.getElementById("reg_treinamento");
+            const filtroTreino = document.getElementById("filtroTreinamento");
+            
+            if(selFunc && estadoGlobal.funcionarios.length > 0) {
+                selFunc.innerHTML = `<option value="">-- Selecione o Colaborador --</option>`;
+                estadoGlobal.funcionarios.forEach(f => { selFunc.innerHTML += `<option value="${f.id_funcionario}">${f.nome} (${f.cargo})</option>`; });
+            }
+            if(selTreino && estadoGlobal.treinamentos.length > 0) {
+                selTreino.innerHTML = `<option value="">-- Selecione a Norma --</option>`;
+                estadoGlobal.treinamentos.forEach(t => { selTreino.innerHTML += `<option value="${t.id_treinamento}">${t.nome_treinamento}</option>`; });
+            }
+            if(filtroTreino && estadoGlobal.treinamentos.length > 0) {
+                filtroTreino.innerHTML = `<option value="">Todos</option>`;
+                estadoGlobal.treinamentos.forEach(t => { filtroTreino.innerHTML += `<option value="${t.id_treinamento}">${t.nome_treinamento}</option>`; });
             }
         }
 
-        // FUNÇÃO AUXILIAR: LIMPA FORMULÁRIO E RESTAURA O ESTADO VISUAL DA TELA
-        function restaurarEstadoFormulario() {
-            document.getElementById("formFuncionario").reset();
-            document.getElementById("id_funcionario").value = "";
-            document.getElementById("tituloFormulario").innerText = "📇 Cadastro de Colaborador";
-            document.getElementById("btnSalvar").className = "btn btn-sm btn-success fw-bold";
-            document.getElementById("btnSalvar").innerText = "Salvar Colaborador";
-            document.getElementById("btnCancelar").className = "btn btn-sm btn-secondary d-none";
+        async function preCarregarDados() {
+            try {
+                const rFunc = await fetch(`${BASE_URL}/funcionario/buscar`); 
+                estadoGlobal.funcionarios = await rFunc.json();
+                
+                const rTreino = await fetch(`${BASE_URL}/treinamento`); 
+                estadoGlobal.treinamentos = await rTreino.json();
+                
+                popularSelects(); // Preenche as listas de seleção assim que os dados estiverem carregados
+            } catch(e) { console.log("Erro interno no Pre-load de chaves relacionais."); }
         }
+        preCarregarDados();
 
-        // 5. ACIONADOR OMNICHANNEL: DISPARAR ALERTAS VIA TWILIO
         async function dispararTwilio() {
-            const btn = document.getElementById("btnTwilio");
-            btn.disabled = true;
-            btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Notificando...`;
-
+            const btn = document.getElementById("btnTwilio"); 
+            btn.disabled = true; // Bloqueia o botão para evitar que o usuário clique duas vezes enquanto a função roda
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Disparando Carga...`;
             try {
-                const resposta = await fetch("http://127.0.0.1:5000/api/notificar-vencimentos", { method: "POST" });
-                const resultado = await resposta.json();
-                alert(resultado.mensagem || "Processamento concluído!");
-            } catch (erro) {
-                alert("Erro ao acionar Twilio: " + erro.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = `<i class="bi bi-whatsapp"></i> Notificar Vencimentos`;
+                const res = await fetch(`${BASE_URL}/notificar-vencimentos`, { method: "POST" }); 
+                const r = await res.json();
+                mostrarMensagem(r.mensagem || "Disparos efetuados com sucesso!", res.ok ? "success" : "danger");
+            } catch (e) { mostrarMensagem("Falha ao acionar o gateway de notificações.", "danger"); }
+            finally { 
+                btn.disabled = false; 
+                btn.innerHTML = `<i class="bi bi-whatsapp"></i> Notificar Vencimentos`; 
             }
         }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
